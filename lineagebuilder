@@ -1,0 +1,49 @@
+#!/bin/bash
+
+DEVICE=$1
+ROMPATH=''
+OUTPATH=''
+CCACHEPATH=''
+
+function main() {
+
+	echo "Building LineageOS for $DEVICE"
+	echo "Getting into source directory..."
+	
+	cd $ROMPATH
+	
+	echo "Backing up existing device zip"
+	cp out/target/product/*/lineage-14* $OUTPATH
+	
+	echo "Beginning sync"
+	repo sync -j4 --force-sync
+	
+	echo "Preparing buildenv"
+	export LC_ALL=C
+	
+	export USE_CCACHE=1
+	export CCACHE_DIR=$CCACHEPATH
+	prebuilts/misc/linux-x86/ccache/ccache -M 10G
+
+	echo "Entering python2 virtual environment"
+	virtualenv2 venv 
+	source venv/bin/activate
+	
+	echo "Sourcing build scripts"
+	source  build/envsetup.sh
+	
+	echo "Fixing JAVA_HOME"
+	export JAVA_HOME="/usr/lib/jvm/$(archlinux-java get)"
+	
+	echo "Cleaning"
+	make clean
+	
+	echo "Making"
+	brunch $DEVICE
+
+	echo "Moving zip to out directory"
+	mv out/target/product/*/lineage-14* $OUTPATH
+	
+}
+
+main
